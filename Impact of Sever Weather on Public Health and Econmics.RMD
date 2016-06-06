@@ -1,0 +1,180 @@
+---
+title: "Impact of Sever Weather on Public Health and Econmics"
+author: "Craig Tedeton"
+date: "06/04/2016"
+output: github_document
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1. Synopsis
+
+The goal of this research is to explore the NOAA Storm Database and potenetial impact of 
+severe weather events on both the population and economy.
+
+The database covers the time period from between 1950 and November 2012. In the earlier years 
+of the database there are generally fewer events recorded, most likely due to a lack of good records. 
+More recent years should be considered more complete.
+
+The analysis aims to investigate which different types of sever weather events are most harmful on the 
+populations health in respect of general injuries and fatalities. Further the economic consequences will 
+be analyzed by exploring the financial damage done to both general property and agriculture (i.e. crops)
+
+2. Data Processing
+The data being processed was gathered from the NOAA Storm Database. It was accessed and processed utilizing the following code:
+
+```{r echo=TRUE}
+# Data Processing
+fileUrl <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+download.file(fileUrl, "./data/StormData.csv.bz2")
+fpath <- file.path("./data")
+filelist <- list.files(fpath, recursive = TRUE)
+filelist
+fileName <- "./data/StormData.csv.bz2"
+
+stormData <- read.csv(fileName)
+summary(stormData)
+rows <- nrow(stormData) ; cols <- ncol(stormData)
+rows ; cols
+```
+
+2.1 Subset of Data
+We will be looking specifically at a subset of this data. So, we need to extract 
+the columns for property damage, injuries and fatalities
+```{r echo=TRUE}
+eventData <- c("EVTYPE", "FATALITIES", "INJURIES", "PROPDMG", "PROPDMGEXP", "CROPDMG", "CROPDMGEXP")
+myData <- stormData[eventData]
+
+```
+2.1.1 Finding Property Damage 
+The data also requires we find unique information on property damage, thus we will not look
+at the injuries and fatalities as of yet. Invalid data was excluded by assigning a value of zero (‘0’). 
+Then property damage value was calculated by multiplying the property damage and property exponent.
+```{r echo=TRUE}
+unique(myData$PROPDMGEXP)
+
+# assign value to property exponent
+myData$PROPEXP[myData$PROPDMGEXP == "K"] <- 1000
+myData$PROPEXP[myData$PROPDMGEXP == "M"] <- 1e+06
+myData$PROPEXP[myData$PROPDMGEXP == ""] <- 1
+myData$PROPEXP[myData$PROPDMGEXP == "B"] <- 1e+09
+myData$PROPEXP[myData$PROPDMGEXP == "m"] <- 1e+06
+myData$PROPEXP[myData$PROPDMGEXP == "0"] <- 1
+myData$PROPEXP[myData$PROPDMGEXP == "5"] <- 1e+05
+myData$PROPEXP[myData$PROPDMGEXP == "6"] <- 1e+06
+myData$PROPEXP[myData$PROPDMGEXP == "4"] <- 10000
+myData$PROPEXP[myData$PROPDMGEXP == "2"] <- 100
+myData$PROPEXP[myData$PROPDMGEXP == "3"] <- 1000
+myData$PROPEXP[myData$PROPDMGEXP == "h"] <- 100
+myData$PROPEXP[myData$PROPDMGEXP == "7"] <- 1e+07
+myData$PROPEXP[myData$PROPDMGEXP == "H"] <- 100
+myData$PROPEXP[myData$PROPDMGEXP == "1"] <- 10
+myData$PROPEXP[myData$PROPDMGEXP == "8"] <- 1e+08
+
+# handling invalid data
+myData$PROPEXP[myData$PROPDMGEXP == "+"] <- 0
+myData$PROPEXP[myData$PROPDMGEXP == "-"] <- 0
+myData$PROPEXP[myData$PROPDMGEXP == "?"] <- 0
+
+# calculate property damage
+myData$PROPDMGVAL <- myData$PROPDMG * myData$PROPEXP
+```
+
+2.1.2 Finding Crop Damages
+Crop damage exponent by level were listed and assigned for the crop exponent data. 
+Invalid data was excluded by assigning the value of zero (‘0’). Then crop damage value was calculated by 
+multiplying the crop damage and crop exponent.
+```{r echo=FALSE}
+# exploring the crop exponent data
+unique(myData$CROPDMGEXP)
+
+# assign values to crop xponents
+myData$CROPEXP[myData$CROPDMGEXP == "M"] <- 1e+06
+myData$CROPEXP[myData$CROPDMGEXP == "K"] <- 1000
+myData$CROPEXP[myData$CROPDMGEXP == "m"] <- 1e+06
+myData$CROPEXP[myData$CROPDMGEXP == "B"] <- 1e+09
+myData$CROPEXP[myData$CROPDMGEXP == "0"] <- 1
+myData$CROPEXP[myData$CROPDMGEXP == "k"] <- 1000
+myData$CROPEXP[myData$CROPDMGEXP == "2"] <- 100
+myData$CROPEXP[myData$CROPDMGEXP == ""] <- 1
+
+# handling invalid data
+myData$CROPEXP[myData$CROPDMGEXP == "?"] <- 0
+
+# calculate crop damage
+myData$CROPDMGVAL <- myData$CROPDMG * myData$CROPEXP
+```
+
+2.2 Calculating the Costs of the Events
+
+Observations note that the " most harmful to population health" events are fatalities and injuries. So those are the only ones selected.
+
+Observations note that the " most harmful to economic problem“” events are property and crop damage. So those events are the only selected.
+
+For each incident (fatalities, Injuries, property and crop damage), the total values were estimated.
+
+We also need to aggregate to values for the events
+
+```{r echo=TRUE}
+# totals by events
+fatality <- aggregate(FATALITIES ~ EVTYPE, myData, FUN = sum)
+injury <- aggregate(INJURIES ~ EVTYPE, myData, FUN = sum)
+propDamag <- aggregate(PROPDMGVAL ~ EVTYPE, myData, FUN = sum)
+cropDamag <- aggregate(CROPDMGVAL ~ EVTYPE, myData, FUN = sum)
+```
+
+2.3 Reviewing Highest Fatalities and Injuries
+
+2.3.1 Top 10 Highest Fatalities and Injuries
+
+Plotting the top 10 highest fatalities and injuries will help better your understanding of the impact of these observations.
+
+```{r echo=TRUE}
+# highest fatalities
+fatalsTop10 <- fatality[order(-fatality$FATALITIES), ][1:10, ]
+
+# highest injuries
+injuryTop10 <- injury[order(-injury$INJURIES), ][1:10, ]
+
+# plots of Top 10s
+par(mfrow = c(1, 2), mar = c(12, 4, 3, 2), mgp = c(3, 1, 0), cex = 0.8)
+
+barplot(fatalsTop10$FATALITIES, las = 3, names.arg = fatalsTop10$EVTYPE, main = "Top 10 Events-Highest Fatalities", 
+        ylab = "Number of Fatalities", col = "red")
+
+barplot(injuryTop10$INJURIES, las = 3, names.arg = injuryTop10$EVTYPE, main = "Top 10 Events-Highest Injuries", 
+        ylab = "Number of Injuries", col = "orange")
+
+```
+
+2.3.2 Top 10 Highest Property and Crop Damages
+
+Plotting the top 10 highest fatalities and injuries will help better your understanding of the impact of these observations.
+
+
+```{r echo=TRUE}
+# highest property damage
+propDamag10 <- propDamag[order(-propDamag$PROPDMGVAL), ][1:10, ]
+
+# highest crop damage
+cropDamag10 <- cropDamag[order(-cropDamag$CROPDMGVAL), ][1:10, ]
+
+par(mfrow = c(1, 2), mar = c(12, 4, 3, 2), mgp = c(3, 1, 0), cex = 0.8)
+
+barplot(propDamag10$PROPDMGVAL/(10^9), las = 3, names.arg = propDamag10$EVTYPE, main = "Events with Highest Property Damage", 
+        ylab = "Costs ($ Bil)", col = "brown")
+
+barplot(cropDamag10$CROPDMGVAL/(10^9), las = 3, names.arg = cropDamag10$EVTYPE, main = "Events With Highest Crop Damage", 
+        ylab = "Costs ($ Bil)", col = "darkgreen")
+```
+<br>
+3. Results of the Research
+
+After review of the data observations and the plotting of this information, we may conclude that;
+Their is a correlation with the highest number of fatalities and injuries with the TORNADO event. Also, excessive heat was noteworthy for high fatalities, while thunderstorm wind appears to contribute to injuries.
+
+Their is also an apparent correlation between floods and maximum property damage. While drought caused maximum crop damage with flood also being highly noted.
+

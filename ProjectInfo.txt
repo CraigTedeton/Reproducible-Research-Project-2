@@ -1,0 +1,8 @@
+
+# Project info/clarifications
+# I'm working on my Course Assignment and I'd like to validate the understanding of 
+# "most harmful with respect to population health" with you guys.
+
+# Since I was not able to find information related to "population health" among the 
+# documentation of the dataset I'm assuming that I can define what is "most harmful" (e.g. Top 5) and 
+# what is the concept of "harmful to population health" (e.g. sum of fatalities and injuries).
